@@ -87,13 +87,10 @@ build_url() {
     url="sorted://x-callback-url/add?title=${title}"
 
     if [ -n "$date" ]; then
-        if [ -n "$time" ]; then
-            # Merge date and time into a single datetime string
-             url="${url}&date=${date}%20${time}"
-        else
-            url="${url}&date=${date}"
-        fi
-    elif [ -n "$time" ]; then
+        url="${url}&date=${date}"
+    fi
+
+    if [ -n "$time" ]; then
         url="${url}&time=${time}"
     fi
     if [ -n "$duration" ]; then
@@ -101,6 +98,8 @@ build_url() {
     fi
     echo ${url}
 }
+
+
 
 split_params() {
     IFS=$1 read -r -a params <<< "$2"
@@ -148,5 +147,4 @@ done
 
 
 build_url
-echo "$url" > ~/Downloads/url.txt
 open -g ${url}
