@@ -5,6 +5,27 @@ if [ $# -lt 1 ]; then
     echo "Insufficient parameters. Usage: script.sh <title> [date] [time] [duration]"
     exit 1
 fi
+# Function to parse time range and calculate duration
+parse_time_range() {
+    local time_range=$1
+    local start_time
+    local end_time
+
+if [[ $time_range =~ ^([0-9]{1,2}:[0-9]{2})[-~]([0-9]{1,2}:[0-9]{2})$ ]]; then
+        start_time=${BASH_REMATCH[1]}
+        end_time=${BASH_REMATCH[2]}
+    
+        # Convert times to minutes from midnight
+        start_minutes=$(date -j -f "%H:%M" "$start_time" "+%H * 60 + %M" | bc)
+        end_minutes=$(date -j -f "%H:%M" "$end_time" "+%H * 60 + %M" | bc)
+
+        # Calculate duration in minutes
+        duration=$((end_minutes - start_minutes))
+
+        echo ${duration}
+    fi
+}
+
 # Function to parse relative dates
 parse_relative_date() {
     local relative_date=$1
@@ -84,7 +105,7 @@ format_date() {
 
 # Function to build the URL
 build_url() {
-    url="sorted://x-callback-url/add?title=${title}"
+    url="sorted://x-callback-url/add?title=${title}&type=event"
 
     if [ -n "$date" ]; then
         if [ -n "$time" ]; then
@@ -131,13 +152,25 @@ duration=""
 for (( i=1; i<${#params[@]}; i++ )); do
     if [[ ${params[i]} =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ || ${params[i]} =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}$ ]]; then
         format_date "${params[i]}"
-    elif [[ ${params[i]} =~ ^[0-9]{1,2}(:00)?$ ]]; then
+    elif [[ ${params[i]} =~ ^[0-9]{1,2}(:[0-9]{2})?$ ]]; then
         format_time "${params[i]}"
     elif [[ ${params[i]} =~ ^[0-9]+$ ]]; then
         duration="${params[i]}"
     elif [[ ${params[i]} =~ ^[0-9]+(\.[0-9]+)?h$ ]]; then
         hours=$(echo "${params[i]}" | sed 's/h//')
         duration=$(echo "$hours * 60" | bc -l | awk -F '.' '{print $1}')
+    elif [[ ${params[i]} =~ ^[0-9]{1,2}:[0-9]{2}~[0-9]{1,2}:[0-9]{2}$ ]]; then
+        parse_time_range "${params[i]}"
+        if [ -z "$time" ]; then
+            IFS='~' read -r time _ <<< "${params[i]}"
+            format_time "$time"
+        fi
+    elif [[ ${params[i]} =~ ^[0-9]{1,2}:[0-9]{2}-[0-9]{1,2}:[0-9]{2}$ ]]; then
+        parse_time_range "${params[i]}"
+        if [ -z "$time" ]; then
+            IFS='-' read -r time _ <<< "${params[i]}"
+            format_time "$time"
+        fi
     else
         parse_relative_date "${params[i]}"
         if [ -z "$date" ]; then
@@ -149,4 +182,4 @@ done
 
 build_url
 echo "$url" > ~/Downloads/url.txt
-open -g ${url}
+# open -g ${url}
