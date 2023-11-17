@@ -35,7 +35,10 @@ parse_relative_date() {
     today=$(date +'%u') # 获取今天是星期几（1表示星期一，7表示星期天）
 
     case $relative_date in
-
+		"今天"|"tod")
+            date=$(date +'%Y-%m-%d')
+            return
+            ;;
         "明天"|"tom")
             date=$(date -v +1d +'%Y-%m-%d')
             return
@@ -105,12 +108,12 @@ format_date() {
 
 # Function to build the URL
 build_url() {
-    url="sorted://x-callback-url/add?title=${title}&type=event"
+    url="sorted://x-callback-url/add?title=${title}"
 
     if [ -n "$date" ]; then
         if [ -n "$time" ]; then
             # Merge date and time into a single datetime string
-             url="${url}&date=${date}%20${time}"
+             url="${url}&date=${date} ${time}"
         else
             url="${url}&date=${date}"
         fi
@@ -118,7 +121,12 @@ build_url() {
         url="${url}&time=${time}"
     fi
     if [ -n "$duration" ]; then
-        url="${url}&duration=${duration}"
+        if [ -z "$date" ] && [ -z "$time" ]; then
+            today_date=$(date +'%Y-%m-%d')
+            url="${url}&duration=${duration}&date=${today_date}"
+        else 
+            url="${url}&duration=${duration}"
+        fi
     fi
     echo ${url}
 }
@@ -181,5 +189,5 @@ done
 
 
 build_url
-echo "$url" > ~/Downloads/url.txt
-# open -g ${url}
+
+open -g "${url}"
